@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import pickle
 from bs4 import BeautifulSoup
-import lime
-from lime.lime_tabular import LimeTabularExplainer
-import matplotlib.pyplot as plt
+# import lime
+# from lime.lime_tabular import LimeTabularExplainer
+# import matplotlib.pyplot as plt
 
 # Define the functions you already have
 def normalize_text(s, sep_token=" \n "):
