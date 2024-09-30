@@ -155,7 +155,7 @@ def main():
             df = df[model_features]
             try:
                 # Assume that the model expects features in a specific order
-                prediction = model.predict_proba(df)[:, 1] # Assuming binary classification
+                prediction = model.predict_proba(df)[:, 0] # Assuming binary classification
                 st.write("### Promotion Probability:")
                 st.write(f'### {prediction[0]:.2%}') # Display the probability of promotion
 
