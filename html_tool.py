@@ -116,7 +116,7 @@ def main():
     model_path = 'promotion_xgb.pkl'
     model, model_features = load_model_and_features(model_path)
 
-    if uploaded_file is not None:
+    if uploaded_file is not None and subject:
         # Read the uploaded file
         content = uploaded_file.read().decode("utf-8")
 
