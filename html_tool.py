@@ -2,9 +2,8 @@ import streamlit as st
 import pandas as pd
 import pickle
 from bs4 import BeautifulSoup
-# import lime
-# from lime.lime_tabular import LimeTabularExplainer
-# import matplotlib.pyplot as plt
+import shap
+import matplotlib.pyplot as plt
 
 # Define the functions you already have
 def normalize_text(s, sep_token=" \n "):
@@ -100,14 +99,15 @@ def load_model_and_features(model_path):
     
     return model, feature_names
 
+
 # Dashboard code
 def main():
     st.title("HTML Promotion Predictor Dashboard")
 
-    st.write("Upload an HTML file to extract features and predict promotion probability.")
+    st.write("Upload one or multiple HTML files to extract features and predict promotion probability.")
 
     # File uploader
-    uploaded_file = st.file_uploader("Choose an HTML file", type="html")
+    uploaded_files = st.file_uploader("Choose HTML files", type="html", accept_multiple_files=True)
 
     # Subject input field
     subject = st.text_input("Enter the email subject", "Demo Subject")
@@ -116,28 +116,39 @@ def main():
     model_path = 'promotion_xgb.pkl'
     model, model_features = load_model_and_features(model_path)
 
-    if uploaded_file is not None and subject:
-        # Read the uploaded file
-        content = uploaded_file.read().decode("utf-8")
+    if uploaded_files and subject:
+        # List to store features of all files
+        all_features = []
 
-        # Extract HTML features
-        html_fea = extract_html_fea(content)
+        for uploaded_file in uploaded_files:
+            # Read the uploaded file
+            content = uploaded_file.read().decode("utf-8")
 
-        # Extract subject features
-        subject_fea = extract_text_fea(subject, "email_subject")
+            # Extract HTML features
+            html_fea = extract_html_fea(content)
 
-        # Combine features
-        combined_fea = {**html_fea, **subject_fea}
+            # Extract subject features
+            subject_fea = extract_text_fea(subject, "email_subject")
+
+            # Combine features and add file name as a column
+            combined_fea = {**html_fea, **subject_fea}
+            combined_fea['file_name'] = uploaded_file.name
+
+            # Append to the list of all features
+            all_features.append(combined_fea)
 
         # Convert to DataFrame
-        df = pd.DataFrame([combined_fea])
+        df = pd.DataFrame(all_features)
+
+        # Move 'file_name' to the first column
+        df = df[['file_name'] + [col for col in df.columns if col != 'file_name']]
 
         # FIXME: model-feature naming correction
         df['css_to_html_ration'] = df['css_to_html_ratio']
         df['text_content_len'] = df['text_len']
-
-        # Display extracted features
-        st.write("### Extracted HTML Features:")
+        df.set_index('file_name', inplace=True)
+        # Display combined features for all files
+        st.write("### Extracted HTML Features for All Files:")
         st.dataframe(df)
 
         # Check for missing features
@@ -152,15 +163,35 @@ def main():
                 
         # Generate predictions if no missing features
         if not missing_features:
-            df = df[model_features]
+            df_model = df[model_features]
             try:
                 # Assume that the model expects features in a specific order
-                prediction = model.predict_proba(df)[:, 0] # Assuming binary classification
-                st.write("### Promotion Probability:")
-                st.write(f'### {prediction[0]:.2%}') # Display the probability of promotion
+                predictions = model.predict_proba(df_model)[:, 0] # Assuming binary classification
+                
+                # Add predictions to the DataFrame
+                df['promotion_probability'] = predictions
+
+                # Display predictions for each file
+                st.write("### Promotion Probabilities:")
+                st.dataframe(df[['promotion_probability']])
+
+                # SHAP explanation
+                st.write("### SHAP Waterfall Plot for Each Prediction")
+
+                # Generate SHAP explanation for each row
+                explainer = shap.TreeExplainer(model)
+                shap_values = explainer(df_model)
+
+                # Loop through each prediction and display its waterfall plot
+                for i, (index, row) in enumerate(df_model.iterrows()):
+                    st.write(f"#### Waterfall Plot for {index}")
+                    plt.figure()
+                    # Use shap_values[i] directly as it is already an Explanation object
+                    shap.plots.waterfall(shap_values[i])
+                    st.pyplot(plt)
 
             except Exception as e:
-                st.write("Error generating prediction:", e)
+                st.write("Error generating predictions:", e)
         else:
             st.write("Model feature names could not be determined. Please verify the model structure.")
 
