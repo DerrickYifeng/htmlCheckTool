@@ -1,15 +1,14 @@
 import streamlit as st
 from openai import AzureOpenAI
-
 # Streamlit App
 st.title("Email Subject Line Generator")
 
 # User Inputs
 st.sidebar.header("Azure Configuration")
 api_key = st.sidebar.text_input("Azure API Key", type="password")
-azure_endpoint = st.sidebar.text_input("Azure Endpoint", value="https://iegg-gpt.openai.azure.com/")
-azure_deployment = st.sidebar.text_input("Azure Deployment Name", value="iegg-gpt-4")
-api_version = st.sidebar.text_input("API Version", value="2023-12-01-preview")
+azure_endpoint = "https://iegg-gpt.openai.azure.com/"
+azure_deployment = "iegg-gpt-4"
+api_version = "2023-12-01-preview"
 
 st.header("Email Content")
 email_content = st.text_area("Enter the email content:")
@@ -64,7 +63,7 @@ if st.button("Generate Subject Lines"):
             response = client.chat.completions.create(
                 model='gpt-4',
                 messages=chat_hist,
-                temperature=0.5,
+                temperature=1,
                 n=n_subject
             )
             
