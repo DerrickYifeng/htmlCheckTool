@@ -12,6 +12,9 @@ api_version = "2023-12-01-preview"
 
 st.header("Email Content")
 email_content = st.text_area("Enter the email content:")
+email_subject_line = st.text_input("Provide an existing email subject line (optional):")
+user_guidance = st.text_area("Add guidance for the AI (optional):", placeholder="E.g., Make the title formal, catchy, or casual.")
+
 n_subject = st.number_input(
     "Number of Subject Lines",
     min_value=1,
@@ -44,13 +47,15 @@ if st.button("Generate Subject Lines"):
             1. **Understand and Clarify**: Make sure you understand the email content.
             2. **Subject Guides**: Keep the subject short and catchy
             3. **Avoid Promotion&Spam**: Make sure subject line is not labeled as promotion or spam.
-
-            # Output 
-            Directly output the subject lines based on the given email content
-
-            # Format 
-            XXX # the subject line 
             """
+          # Adding user guidance and existing subject line to the prompt if provided
+        if user_guidance:
+            sub_gen_prompt += f"\n# Additional Guidance\n{user_guidance}"
+        sub_gen_prompt += "\n# Output\nDirectly output the subject lines based on the given email content.\n"
+        
+        if email_subject_line:
+            email_content = f"\n# Existing Subject Line\n{email_subject_line}\n# Email Content\n{email_content}"
+
         
         # Chat History
         chat_hist = [
