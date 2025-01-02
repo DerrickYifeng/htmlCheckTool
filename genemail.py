@@ -46,7 +46,7 @@ if st.button("Generate Subject Lines"):
 
             1. **Understand and Clarify**: Make sure you understand the email content.
             2. **Subject Guides**: Keep the subject short and catchy
-            3. **Avoid Promotion&Spam**: Make sure subject line is not labeled as promotion or spam.
+            3. **Avoid Promotion or Spam Keywords**: Avoid keywords that are likely to be labeled as promotion or spam.
             """
           # Adding user guidance and existing subject line to the prompt if provided
         if user_guidance:
