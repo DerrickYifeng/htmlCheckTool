@@ -4,3 +4,4 @@ streamlit==1.38.0
 xgboost
 shap
 openai
+matplotlib
