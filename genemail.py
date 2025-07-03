@@ -34,7 +34,7 @@ def generate(query, tasks_prompt, user_api_key):
     )
     
     response = client.chat.completions.create(
-        model="gpt-4o-2024-05-13",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": tasks_prompt},
             {"role": "user", "content": query}
