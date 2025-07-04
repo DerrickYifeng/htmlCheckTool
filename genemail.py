@@ -1,5 +1,6 @@
 import streamlit as st
-from openai import OpenAI
+import requests
+import json
 import time
 
 # Streamlit App
@@ -28,34 +29,67 @@ def generate(query, tasks_prompt, user_api_key, max_retries=3):
     if not user_api_key.endswith('@smartlink'):
         formatted_api_key = f'{user_api_key}@smartlink'
     
-    # Initialize OpenAI client with proxy settings and timeout
-    client = OpenAI(
-        api_key=formatted_api_key,
-        base_url='http://gptproxy.ai.levelinfinite.com/gpt',
-        timeout=60.0  # 60 seconds timeout
-    )
+    # API endpoint and headers
+    url = 'http://gptproxy.ai.levelinfinite.com/gpt/chat/completions'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {formatted_api_key}'
+    }
+    
+    # Request payload
+    payload = {
+        'model': 'gpt-4o',
+        'messages': [
+            {'role': 'system', 'content': tasks_prompt},
+            {'role': 'user', 'content': query}
+        ],
+        'temperature': 0.8,
+        'max_tokens': 2048
+    }
     
     for attempt in range(max_retries):
         try:
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": tasks_prompt},
-                    {"role": "user", "content": query}
-                ],
-                temperature=0.8,
-                max_tokens=2048,
+            # Make HTTP request with timeout
+            response = requests.post(
+                url, 
+                headers=headers, 
+                json=payload, 
+                timeout=60
             )
             
-            res = response.choices[0].message.content
-            if res.startswith('```json'):
-                res = res[8:-3]
-            return res
-            
+            # Check if request was successful
+            if response.status_code == 200:
+                result = response.json()
+                res = result['choices'][0]['message']['content']
+                
+                if res.startswith('```json'):
+                    res = res[8:-3]
+                return res
+            else:
+                # Handle HTTP errors
+                error_detail = response.text
+                raise Exception(f"HTTP {response.status_code}: {error_detail}")
+                
+        except requests.exceptions.Timeout:
+            if attempt < max_retries - 1:
+                st.warning(f"Request timeout on attempt {attempt + 1}, retrying...")
+                time.sleep(2)
+                continue
+            else:
+                raise Exception("Request timed out after multiple attempts")
+                
+        except requests.exceptions.ConnectionError:
+            if attempt < max_retries - 1:
+                st.warning(f"Connection error on attempt {attempt + 1}, retrying...")
+                time.sleep(2)
+                continue
+            else:
+                raise Exception("Connection failed after multiple attempts")
+                
         except Exception as e:
             if attempt < max_retries - 1:
                 st.warning(f"Attempt {attempt + 1} failed, retrying... ({str(e)[:100]})")
-                time.sleep(2)  # Wait 2 seconds before retry
+                time.sleep(2)
                 continue
             else:
                 # Last attempt failed
@@ -107,9 +141,12 @@ if st.button("Generate Subject Lines"):
             if "timeout" in error_msg.lower():
                 st.error("⚠️ **Connection Timeout**: The proxy server is not responding. This often happens on Streamlit Cloud due to network restrictions.")
                 st.info("💡 **Suggestions:**\n- Try running locally instead of Streamlit Cloud\n- Contact your IT team about proxy server accessibility\n- Consider using a different API endpoint")
-            elif "401" in error_msg:
+            elif "401" in error_msg or "unauthorized" in error_msg.lower():
                 st.error("🔑 **Authentication Error**: Invalid API key format.")
                 st.info("Please check your API key and try again.")
+            elif "connection" in error_msg.lower():
+                st.error("🌐 **Connection Error**: Unable to connect to the proxy server.")
+                st.info("Please check your internet connection and try again.")
             else:
                 st.error(f"❌ **Error occurred**: {error_msg}")
                 st.info("Please try again or contact support if the issue persists.")
